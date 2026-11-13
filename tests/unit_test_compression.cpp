@@ -1,63 +1,49 @@
-
 #include <gtest/gtest.h>
 
-#include "../include/utils.hpp"
-
-#include <stdexcept>
-#include <vector>
 #include <cstdint>
+#include <vector>
 
-TEST(CompressorTest, CompressRepeatedBytes) {
+#include "dependencies.h"
 
-    std::vector<uint8_t> input = {
-        'A', 'A', 'A',
-        'B', 'B',
-        'C', 'C', 'C'
-    };
+TEST_F(ZipliteUnitTests, CompressRepeatedBytes) {
+    const std::vector<uint8_t> input = {'A', 'A', 'A', 'B', 'B', 'C', 'C', 'C'};
+    const std::vector<uint8_t> expected = {'A', 3, 'B', 2, 'C', 3};
 
-    std::vector<uint8_t> expected = {
-        'A', 3,
-        'B', 2,
-        'C', 3
-    };
+    const auto result = compression_engine.execute(input);
 
-    auto result = ziplite::compress(input);
-
-    EXPECT_EQ(result, expected);
+    EXPECT_TRUE(result.compression_used);
+    EXPECT_EQ(result.payload, expected);
+    EXPECT_EQ(result.original_size, input.size());
+    EXPECT_EQ(result.compressed_size, expected.size());
 }
 
-TEST(CompressorTest, CompressEmptyInput) {
+TEST_F(ZipliteUnitTests, EmptyInputRemainsEmpty) {
+    const std::vector<uint8_t> input;
 
-    std::vector<uint8_t> input;
+    const auto result = compression_engine.execute(input);
 
-    EXPECT_EQ(input.size(), 0);
+    EXPECT_FALSE(result.compression_used);
+    EXPECT_TRUE(result.payload.empty());
+    EXPECT_EQ(result.original_size, 0);
+    EXPECT_EQ(result.compressed_size, 0);
 }
 
-TEST(CompressorTest, HandleLongRuns) {
+TEST_F(ZipliteUnitTests, SplitsRunsLongerThan255) {
+    const std::vector<uint8_t> input(300, 'A');
+    const std::vector<uint8_t> expected = {'A', 255, 'A', 45};
 
-    std::vector<uint8_t> input(300, 'A');
+    const auto result = compression_engine.execute(input);
 
-    auto result = ziplite::compress(input);
-
-    std::vector<uint8_t> expected = {
-        'A', 255,
-        'A', 45
-    };
-
-    EXPECT_EQ(result, expected);
+    EXPECT_TRUE(result.compression_used);
+    EXPECT_EQ(result.payload, expected);
 }
 
-TEST(CompressorTest, CompressionDecompressionRoundTrip) {
+TEST_F(ZipliteUnitTests, KeepsOriginalWhenCompressionExpandsData) {
+    const std::vector<uint8_t> input = {'A', 'B', 'C'};
 
-    std::vector<uint8_t> input = {
-        'A', 'A', 'A',
-        'B', 'B',
-        'C', 'C', 'C',
-        'D'
-    };
+    const auto result = compression_engine.execute(input);
 
-    auto compressed = ziplite::compress(input);
-    auto decompressed = ziplite::decompress(compressed);
-
-    EXPECT_EQ(input, decompressed);
+    EXPECT_FALSE(result.compression_used);
+    EXPECT_EQ(result.payload, input);
+    EXPECT_EQ(result.compressed_size, input.size());
 }

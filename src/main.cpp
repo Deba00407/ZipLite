@@ -4,15 +4,22 @@
 #include <string>
 #include <vector>
 
-#include "utility_impl.cpp"
-#include "file_handler_impl.cpp"
+#include "algorithms_impl//RLECompressor.h"
+#include "algorithms_impl/RLEDecompressor.h"
+#include "core/CompressionEngine.h"
+#include "core/DeCompressionEngine.h"
+#include "io/FileHandler.h"
 
 // Logic flow:
 // read_file -> compress -> write_file
 // read_file(compressed) -> decompress -> write_file
 // verify both written files are same
 
-signed main(int argc, char** argv) {
+
+signed main(const int argc, char** argv) {
+
+    // User flags
+    std::unordered_map<std::string, std::string> args;
 
     if (argc < 5) {
         std::cerr
@@ -21,8 +28,6 @@ signed main(int argc, char** argv) {
 
         return 1;
     }
-
-    std::unordered_map<std::string, std::string> args;
 
     for (int i = 1; i < argc; i++) {
 
@@ -41,7 +46,7 @@ signed main(int argc, char** argv) {
         args[flag] = argv[++i];
     }
 
-    if (!args.count("--in") || !args.count("--out")) {
+    if (!args.contains("--in") || !args.contains("--out")) {
         std::cerr << "Both --in and --out are required.\n";
         return 1;
     }
@@ -52,21 +57,33 @@ signed main(int argc, char** argv) {
     std::cout << "Input: " << inputFile << '\n';
     std::cout << "Output: " << outputFile << '\n';
 
-    // Compression workflow
-    std::vector<uint8_t> bytes = filehandler::read_file(inputFile);
-    std::vector<uint8_t> compressedBytes = ziplite::compress(bytes);
 
-    // Print the compressed bytes
-    filehandler::write_file(outputFile, compressedBytes);
+    // Compression workflow
+
+    auto *compressor = new ziplite::RLECompressor();
+
+    auto* compression_engine = new ziplite::CompressionEngine(*compressor);
+
+    auto bytes = filehandler::FileHandler::read_bytes(inputFile);
+
+    auto result = compression_engine->execute(bytes);
+
+    filehandler::FileHandler::write_file(outputFile, result);
 
     
     // Decompression workflow
-    std::vector<uint8_t> decompressedBytes = ziplite::decompress(compressedBytes);
 
-    // Print decompressed bytes
-    // filehandler::write_file(outputFile, decompressedBytes);
+    auto *decompressor = new ziplite::RLEDecompressor();
+
+    auto compressedFile = filehandler::FileHandler::read_file(outputFile);
+
+    auto* decompression_engine = new ziplite::DeCompressionEngine(*decompressor);
+
+    const std::vector<uint8_t> decompressedBytes = decompression_engine->execute(
+        compressedFile.payload, compressedFile.compression_used
+    );
 
     // Check for equality
-    bool result = (decompressedBytes == bytes) ? true : false;
-    std::cout << "\n\n Both files are equal: " << result << std::endl;
+    const bool check = (decompressedBytes == result.payload);
+    std::cout << "\n\n Both files are equal: " << check << std::endl;
 }

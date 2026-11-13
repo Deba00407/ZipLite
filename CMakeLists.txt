@@ -13,24 +13,35 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # core library
 add_library(ziplite_core STATIC
-  src/utility_impl.cpp
-  src/file_handler_impl.cpp
+        src/core/CompressionEngine.cpp
+        src/core/CompressionEngine.h
+        include/interfaces/ICompressor.h
+        src/io/FileHandler.cpp
+        src/io/FileHandler.h
+        src/algorithms_impl/RLECompressor.cpp
+        src/algorithms_impl/RLECompressor.h
+        src/algorithms_impl/RLEDecompressor.cpp
+        src/algorithms_impl/RLEDecompressor.h
+        src/core/DeCompressionEngine.cpp
+        src/core/DeCompressionEngine.h
 )
 
 # public headers
-target_include_directories(ziplite_core PUBLIC
-  ${PROJECT_SOURCE_DIR}/include
+target_include_directories(ziplite_core
+        PUBLIC
+            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src
 )
 
 # executable
 add_executable(ziplite
   src/main.cpp
+        include/interfaces/IDecompressor.h
 )
 
 target_link_libraries(ziplite
   PRIVATE  ziplite_core
 )
-
 
 # Testing
 include(CTest)

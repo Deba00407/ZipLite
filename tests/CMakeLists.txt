@@ -11,7 +11,9 @@ FetchContent_MakeAvailable(googletest)
 
 # Create test executable
 add_executable(ziplite_tests
-    ./unit_test_compression.cpp
+        dependencies.h
+        unit_test_compression.cpp
+        unit_test_decompression.cpp
 )
 
 # Link the core library and GoogleTest
